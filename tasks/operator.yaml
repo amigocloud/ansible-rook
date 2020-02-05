@@ -1,17 +1,24 @@
 # Initialize rook operator
+#
+- name: Rook - Make directory to hold temp files
+  file: 
+    path: "/root/ansible_rook_role/"
+    state: directory
+
+- name: Rook - Create operator.yaml file from template
+  template: 
+     src: operator.yaml.j2
+     dest: "/root/ansible_rook_role/operator.yaml"
 
 - name: ROOK - Deploy Rook Operator
   k8s:
     kubeconfig: "{{ kubeconfig_file_path | default(omit) }}"
     state: present
-    definition: "{{ item }}"
+    src: "/root/ansible_rook_role/operator.yaml"
   register: ret
   until: not ret.failed or ret.get('rc') != 0 or ret.get('status') != 200
   retries: "{{ k8s_task_retries | default(3) }}"
   delay: "{{ k8s_task_delay | default(15) }}"
-  loop: "{{ lookup('template', 'operator.yaml.j2') | from_yaml_all | list }}"
-  loop_control:
-    label: "{{ item | to_nice_yaml }}"
   tags: deploy_operator
 
 - name: ROOK - Verify if the rook operator is up and running

@@ -1,15 +1,24 @@
 # Create block pools as defined on variables
 
+- name: Rook - Make directory to hold temp files
+  file:
+    path: "/root/ansible_rook_role/storages"
+    state: directory
+
+- name: Rook - Create block-pool.yaml file from template
+  template:
+     src: storages/block-pool.yaml.j2
+     dest: "/root/ansible_rook_role/storages/{{item.pool_name}}-block-pool.yaml"
+  loop: "{{ ceph_block_storage_pools }}"
+
 - name: ROOK - Create Block Storage pools
   k8s:
     kubeconfig: "{{ kubeconfig_file_path | default(omit) }}"
     state: present
-    definition: "{{ lookup('template', 'storages/block-pool.yaml.j2') | from_yaml }}"
+    src: "/root/ansible_rook_role/storages/{{item.pool_name}}-block-pool.yaml"
   register: ret
   until: not ret.failed or ret.get('rc') != 0 or ret.get('status') != 200
   retries: "{{ k8s_task_retries | default(3) }}"
   delay: "{{ k8s_task_delay | default(15) }}"
   loop: "{{ ceph_block_storage_pools }}"
-  loop_control:
-    label: "{{ item | to_nice_yaml }}"
   tags: storage_creation
